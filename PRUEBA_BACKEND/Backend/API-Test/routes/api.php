@@ -20,4 +20,8 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 });
 */
 
+//CRUD Basico
 Route::resource("users","UserController");
+
+//LOgin
+Route::post("login","UserController@login");

@@ -4,7 +4,7 @@ namespace App\Helpers;
 
 use Firebase\JWT\JWT;
 use Illuminate\Support\Facades\DB;
-use App\User;
+use App\Models\User;
 
 class JwtAuth{
 
@@ -39,52 +39,53 @@ class JwtAuth{
 
     }
 
-    public function signup($email, $password, $getToken = null){
+    public function signup($email, $password){
 
         //Se busca si el usuario existe con las credeniales.
 
-        $user = User::Where(['email'=>$emaile, 'password'=>$password])->first();
+        $user = User::Where(['email'=>$email, 'password'=>$password])->first();
 
         //Comprobar si es correcto
-
         $signup = false;
 
-        if (is_object($user))
-        {
-            $signup = true;
-        }
-
-        if ($signup) {
-
-            $expMinutes = 60;
+        //Si existe un usuario con el email y contraseña 
+        if (is_object($user)) {
 
             $token = array(
-                'sub'       => $user->id,
-                'email'     => $user->email,
-                'name'      => $user->name,
-                'last_name' =>$user->last_name,
-                'user_name' =>$user->user_name,
-                'iat'       =>time(),
-                'exp'       =>time() + ($expMinutes * 60)
+                'sub'       =>  $user->id,
+                'email'     =>  $user->email,
+                'name'      =>  $user->name,
+                'last_name' =>  $user->last_name,
+                'user_name' =>  $user->user_name,
+                'iat'       =>  time(),
+                'exp'       =>  time() + ($this->expMinutes * 60)
             );
 
-            if (is_null($getToken))
-            {
-                $jwt = JWT::encode($token,$this->key,'HS256');
-                $data = $jwt;
-            }
-            else{
-                $data = $token;
-            }
+            $jwt = JWT::encode($token,$this->key,'HS256');
+
+            $user->token = $jwt;
+            
+            $user->save();
+
+            $data = array(
+                "code" => 200,
+                "data"=> $user
+            );
+
+            return $data;
+          
         }
         else{
+
             $data = array(
-                'status'    =>  'error',
-                'message'   =>  'Usuario o Contraseña Incorrecta'
-            );
+                            "code" => 401,
+                            "data" => ["error"=> "Error in user or password"]
+                        );
+          
+            return $data;
         }
 
-        return $data;
+       
     }
 
     public function checkToken($jwt, $getIdentity= false){
