@@ -9,9 +9,14 @@ use App\Helpers\JwtAuth;
 
 class UserController extends Controller
 {
+    //Constructor
+    public function __construct()
+    {
+        $this->middleware('api_auth',['except' => ['login']]);
+    }
 
     /**
-     * User Login - Get Token
+     *Login / iniciar sesión / obtener token
      */
     public function login (Request $request)
     {
@@ -25,9 +30,7 @@ class UserController extends Controller
             $data = ["error" => $errorMessage];
 
             return response()->json($data,403);
-
         }
-      
 
         //Recoger los datos para el nuevo usuario
 
@@ -81,7 +84,7 @@ class UserController extends Controller
     }
 
     /**
-     * Display a listing of the resource.
+     * Listar usuarios
      *
      * @return \Illuminate\Http\Response
      */
@@ -91,7 +94,7 @@ class UserController extends Controller
         try {
           
             //Obtener todos los usuarios
-            $users =  User::get();
+            $users =  User::where('active',1)->orderBy('first_name')->get();
 
             return response()->json($users,200);
 
@@ -106,7 +109,7 @@ class UserController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Crear usuario
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
@@ -142,7 +145,7 @@ class UserController extends Controller
 
             //La validación ha fallado
             $data = array(
-                "errors" =>$validate->errors()
+                "errors" =>"There is already a user with the selected email"
             );
 
             return response()->json($data,400);
@@ -150,6 +153,27 @@ class UserController extends Controller
 
         //Datos correctos. Se comienza a realizar el proceso
 
+        //Se valida si ya existe un usuario con el email enviado en los datos
+        $where = array(
+            ['email', '=', $params_array["email"]],
+            ['active','=',1]
+        );
+
+        
+
+        $validateUser = User::where($where)->count();
+
+
+        //Si existe ya un usuario con el email
+        if ($validateUser != 0) 
+        {
+            $data = array(
+                "errors" =>"There is already a user with the selected email"
+            );
+
+            return response()->json($data,400);            
+        }
+    
         //Cifrar la contraseña
         $psw = hash('sha256',$params_array["password"]);
 
@@ -220,7 +244,7 @@ class UserController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Listar usuario
      *
      * @param  int  $id
      * @return \Illuminate\Http\Response
@@ -231,7 +255,7 @@ class UserController extends Controller
         try {
 
             //Obtener el usuario con        
-            $user =  User::find($id);
+            $user =  User::where('active',1)->find($id);
 
             //Datos de respuesta
             $data = $user;
@@ -255,7 +279,7 @@ class UserController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Edición parcial de un usuario
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
@@ -264,7 +288,7 @@ class UserController extends Controller
     public function update(Request $request, $id)
     {
         //Obtener el usuario a editar
-        $user = User::find($id);
+        $user = User::where('active',1)->find($id);
 
         //Si no existe el usuario con el id
         if (!is_object($user)) {
@@ -286,9 +310,37 @@ class UserController extends Controller
         //Cantidad de campos, se pudo solo colocar el valor 6, pero me gusta mas "automatico"                        
         $count = count($update_data);
 
+
+        if (is_string($request["email"])) 
+        {
+
+             //Se valida si ya existe un usuario con el email enviado en los datos
+            $where = array(
+                ['email', '=', $request["email"]],
+                ['id',"!=",$id],
+                ['active','=',1]
+            );
+
+            $validateUser = User::where($where)->count();
+
+            //Si existe ya un usuario con el email
+            if ($validateUser != 0) 
+            {
+                $data = array(
+                    "errors" =>"There is already a user with the selected email"
+                );
+
+                return response()->json($data,400);            
+            }
+       
+       
+        }
+       
+
         //Validando si alguno de los campos opcionales tienen datos 
         for ($i=0; $i < $count ; $i++) {
 
+            //Si el campo actual tiene datos , se hace la modificación.
             if (is_string($request[$update_data[$i]]) || is_int($request[$update_data[$i]])) 
             {
                 $user[$update_data[$i]] = $request[$update_data[$i]];
@@ -314,7 +366,117 @@ class UserController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Edición general de usuario
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(Request $request, $id){
+
+         //Recoger los datos para el nuevo usuario
+
+         $params_array = array(
+            "first_name"    =>  $request["first_name"],
+            "last_name"     =>  $request["last_name"],
+            "email"         =>  $request["email"],
+            "password"      =>  $request["password"],
+            "age"           =>  $request["age"],
+            "image"         =>  $request["image"],
+            "description"   =>  $request["description"],
+        );
+      
+        //Validar datos
+        $validate = \Validator::make(
+            $params_array,
+            [
+                "first_name"    =>"required",
+                "last_name"     =>"required",
+                "email"         =>"required|email",
+                "password"      =>"required",
+                "age"           =>"required",
+                "image"         =>"required",
+                "description"   =>"required"
+
+            ]
+        );
+
+        //Si faltan datos requeridos
+        if ($validate->fails()) {
+
+            //La validación ha fallado
+            $data = array(
+                "errors" =>$validate->errors()
+            );
+
+            return response()->json($data,400);
+        }
+
+        try 
+        {
+            //Validar si existe un usuario con el email para editar
+            //Se valida si ya existe un usuario con el email enviado en los datos
+              $where = array(
+                ['email', '=', $request["email"]],
+                ['id',"!=",$id],
+                ['active','=',1]
+            );
+
+            $validateUser = User::where($where)->count();
+
+            //Si existe ya un usuario con el email
+            if ($validateUser != 0) 
+            {
+                $data = array(
+                    "errors" =>"There is already a user with the selected email"
+                );
+
+                return response()->json($data,400);            
+            }
+
+            //Obtener el usuario a editar
+            $user = User::where('active',1)->find($id);
+
+            //Si no existe el usuario con el id
+            if (!is_object($user)) {
+            
+                //Respuesta 
+                $data = array("error" => "Not found");
+
+                return response()->json($data,200);
+            }  
+
+            //Edición de los datos del usuario
+            $user->first_name = $params_array["first_name"];
+            $user->last_name = $params_array["last_name"];
+            $user->email = $params_array["email"];
+            $user->age = $params_array["age"];
+            $user->image = $params_array["image"];
+            $user->description = $params_array["description"];
+
+             //Cifrar la contraseña
+            $psw = hash('sha256',$params_array["password"]);
+            
+            //Editar la nueva contraseña
+            $user->password = $psw;
+
+            //Guardando la modificación de los datos a la base de datos
+            $user->save();            
+
+            return response()->json($user,200);    
+        } 
+        catch (\Throwable $th) {
+             //Si ha genera un error interno 
+             $data = array("error" =>"Internal Server Error");
+
+             return response()->json($data,500);
+        }
+
+       
+    }
+
+    /**
+     * Borrar usuario
      *
      * @param  int  $id
      * @return \Illuminate\Http\Response
@@ -325,7 +487,7 @@ class UserController extends Controller
         try {
 
             //Obtener el usuario con        
-            $user =  User::find($id);
+            $user =  User::where('active',1)->find($id);
 
             //Datos de respuesta
             $data = $user;
@@ -336,7 +498,10 @@ class UserController extends Controller
                 $data = ["error" => "Not found"];
             }
             else{
-                $data->delete();
+
+                //Eliminación logica del usuario
+                $data->active = 0;
+                $data->save();
             }
             
             //Respuesta

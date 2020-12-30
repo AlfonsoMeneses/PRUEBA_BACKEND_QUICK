@@ -16,6 +16,19 @@ class ApiAuthMiddleware
      */
     public function handle($request, Closure $next)
     {
+         //Validando el Header Content-Type : application/json
+         $header = $request->header("Content-Type");
+
+         if ($header != "application/json") {
+ 
+             $errorMessage = "Request should have 'Content-Type' header with value 'application/json'"; 
+             
+             $data = ["error" => $errorMessage];
+ 
+             return response()->json($data,403);
+ 
+         }
+
         //Comprobando si el usuario esta identificado
         $token = $request->header('Authorization');
         $jwtAuth = new JwtAuth();
@@ -25,14 +38,13 @@ class ApiAuthMiddleware
             return $next($request);
         }
         else{
-             //Error con la autenticacion.
-             $data = array(
-                'code'      =>  403,
-                'status'    =>  "Error",
-                'message'   =>  'El usuario no esta identificado',
-            );
 
-            return response()->json($data, $data['code']);
+             //Error con la autenticacion.
+            $errorMessage = "Invalid Auth token."; 
+             
+            $data = ["error" => $errorMessage];
+
+            return response()->json($data,401);
         }
     }
 }

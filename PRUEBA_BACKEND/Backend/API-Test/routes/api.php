@@ -21,7 +21,19 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 */
 
 //CRUD Basico
-Route::resource("users","UserController");
+//Route::resource("users","UserController");
 
-//LOgin
+//Login
 Route::post("login","UserController@login");
+//Lista de usuarios
+Route::get('users',"UserController@index");
+//Obtener datos de un usuario
+Route::get('users/{id}',"UserController@show");
+//Crear Usuario
+Route::post('users',"UserController@store");
+//Edición general de usuario
+Route::put('users/{id}',"UserController@edit");
+//Edición parcial de un usuario
+Route::patch('users/{id}',"UserController@update");
+// Borrar usuario |
+Route::delete('users/{id}',"UserController@destroy");
