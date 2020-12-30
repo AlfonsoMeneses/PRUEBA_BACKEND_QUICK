@@ -37,3 +37,13 @@ Route::put('users/{id}',"UserController@edit");
 Route::patch('users/{id}',"UserController@update");
 // Borrar usuario |
 Route::delete('users/{id}',"UserController@destroy");
+
+//Error 404
+Route::get('/', function () {
+
+    //Error 404
+    $data = ["error" => "Not found"];    
+    //Respuesta
+    return response()->json($data,200);
+    
+});
