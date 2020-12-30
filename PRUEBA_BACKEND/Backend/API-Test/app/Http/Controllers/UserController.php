@@ -93,8 +93,16 @@ class UserController extends Controller
         //
         try {
           
+            //Paginación de la lista de usuarios
+            $per_page = 10;
+            
+            if ( $request["per_page"] >0) {
+                
+                $per_page =  $request["per_page"];
+            }
+
             //Obtener todos los usuarios
-            $users =  User::where('active',1)->orderBy('first_name')->get();
+            $users =  User::where('active',1)->orderBy('first_name')->paginate($per_page);
 
             return response()->json($users,200);
 
